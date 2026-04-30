@@ -1,27 +1,42 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Optional, List
 from datetime import datetime
 
 
-# ── Réponse après upload d'un CV ──────────────────────────────────
+class CVResponse(BaseModel):
+    id: int
+    user_id: int
+    file_path: str
+    uploaded_at: datetime
+    skills_extracted: Optional[List[str]] = []
+
+    class Config:
+        from_attributes = True
+
+
 class CVUploadResponse(BaseModel):
     cv_id: int
-    filename: str
-    extracted_skills: List[str]  # liste des skill ids normalisés ex: ["python", "sql"]
-    message: str = "CV uploadé et analysé avec succès"
+    message: str
+    skills: List[str]
+    skill_count: int
 
 
-# ── Détail d'un CV stocké ─────────────────────────────────────────
-class CVDetail(BaseModel):
-    id: int
-    file_path: str
-    extracted_text: Optional[str] = None
-    uploaded_at: Optional[datetime] = None
-
-    model_config = {"from_attributes": True}
+class SkillList(BaseModel):
+    skills: List[str]
 
 
-# ── Liste des CVs d'un utilisateur ───────────────────────────────
-class CVListResponse(BaseModel):
-    cvs: List[CVDetail]
-    total: int
+class CVOptimizationRequest(BaseModel):
+    cv_id: int
+    offer_id: Optional[int] = None
+    offer_text: Optional[str] = None
+
+
+class CVOptimizationResponse(BaseModel):
+    cv_id: int
+    ats_score: float
+    missing_keywords: str  
+    suggestions: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

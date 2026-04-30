@@ -1,49 +1,121 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Optional, List
+from datetime import datetime
 
 
-# ── Un skill normalisé (correspond à skill_taxonomy.json) ─────────
-class SkillItem(BaseModel):
-    id: str        # ex: "python"
-    label: str     # ex: "Python"
-    category: str  # ex: "programming" | "database" | "ml" | "cloud" | "tool"
 
 
-# ── Résultat du Career Gap ────────────────────────────────────────
-class GapResult(BaseModel):
-    acquired: List[str]         # skills que l'étudiant a déjà
-    missing: List[str]          # skills manquants
-    employability_score: float  # score 0-100
-    match_percentage: float     # % de skills acquis sur total requis
+class SkillBase(BaseModel):
+    name: str
+    category: Optional[str] = None
+    description: Optional[str] = None
 
 
-# ── Requête pour lancer une analyse de gap ────────────────────────
+class SkillResponse(SkillBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+
+
 class GapAnalysisRequest(BaseModel):
     cv_id: int
-    target_job: str             # ex: "Data Engineer"
-    offer_id: Optional[int] = None  # si comparaison avec une offre spécifique
+    user_target_job_id: int         
+    offer_id: Optional[int] = None
 
 
-# ── Une étape dans la roadmap ─────────────────────────────────────
-class RoadmapStep(BaseModel):
-    week: int                   # numéro de semaine ex: 1
-    skill: str                  # skill ciblé ex: "spark"
-    title: str                  # ex: "Introduction à Apache Spark"
-    description: str            # ce qu'il faut apprendre
-    resources: List[str]        # liens cours / docs
-    project: Optional[str] = None  # mini projet suggéré
+class GapSkillDetail(BaseModel):
+    skill_name: str
+    status: str  
+    weight: float
 
 
-# ── Roadmap complète générée par le LLM ──────────────────────────
-class RoadmapResponse(BaseModel):
-    target_job: str
-    total_weeks: int
+class GapResult(BaseModel):
+    career_gap_id: int
+    employability_score: float
+    acquired_skills: List[str]
     missing_skills: List[str]
-    steps: List[RoadmapStep]
+    gap_details: List[GapSkillDetail]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
-# ── Requête pour générer une roadmap ─────────────────────────────
+# ─── Roadmap Schemas ──────────────────────────────────────────────────────────
+
 class RoadmapRequest(BaseModel):
-    missing_skills: List[str]
-    target_job: str
-    level: Optional[str] = "débutant"
+    career_gap_id: int
+    duration_weeks: Optional[int] = 8
+
+
+class RoadmapStepResponse(BaseModel):
+    week_number: Optional[int] = None
+    title: Optional[str] = None
+    skill_name: Optional[str]
+    type: str  # "course", "project", "reading"
+    resource_link: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class RoadmapResponse(BaseModel):
+    roadmap_id: int
+    duration_weeks: int
+    steps: List[RoadmapStepResponse]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ─── Interview Schemas ────────────────────────────────────────────────────────
+
+class InterviewRequest(BaseModel):
+    user_target_job_id: int
+    offer_id: Optional[int] = None
+    num_questions: Optional[int] = 5
+
+
+class InterviewQuestion(BaseModel):
+    question_text: str
+    related_skill: Optional[str]
+
+
+class InterviewSessionResponse(BaseModel):
+    session_id: int
+    questions: List[InterviewQuestion]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ─── Target Job Schemas ───────────────────────────────────────────────────────
+
+class TargetJobResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str]
+    sector: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class UserTargetJobRequest(BaseModel):
+    target_job_id: int
+
+
+class UserTargetJobResponse(BaseModel):
+    id: int
+    user_id: int
+    target_job_id: int
+    is_active: bool
+    target_job: Optional[TargetJobResponse]
+
+    class Config:
+        from_attributes = True
