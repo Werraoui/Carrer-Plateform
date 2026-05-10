@@ -1,9 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import List
-from pathlib import Path
 
-# Chemin absolu vers le .env
-ENV_FILE = Path(__file__).parent.parent / ".env"
 
 class Settings(BaseSettings):
     # Database
@@ -12,14 +9,14 @@ class Settings(BaseSettings):
     # JWT
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
     # ML Service
     ML_SERVICE_URL: str = "http://localhost:8001"
 
-    # LLM
+    # LLM (Gemini Flash)
     LLM_API_KEY: str = ""
-    LLM_MODEL: str = "gemini-1.5-flash"
+    LLM_MODEL: str = "gemini-2.5-flash"
     LLM_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta"
 
     # CORS
@@ -30,7 +27,8 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE_MB: int = 10
 
     class Config:
-        env_file = str(ENV_FILE)  
+        env_file = ".env"
         env_file_encoding = "utf-8"
+
 
 settings = Settings()
