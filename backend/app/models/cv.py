@@ -34,8 +34,13 @@ class CVOptimizationRequest(BaseModel):
 class CVOptimizationResponse(BaseModel):
     cv_id: int
     ats_score: float
-    missing_keywords: str  
-    suggestions: str
+    keyword_score: float = 0.0
+    format_score: float = 0.0
+    completeness_score: float = 0.0
+    matched_keywords: List[str] = []
+    missing_keywords: List[str] = []
+    warnings: List[str] = []
+    suggestions: List[str] = []
     created_at: datetime
 
     class Config:
