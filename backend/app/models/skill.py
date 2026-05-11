@@ -22,7 +22,7 @@ class SkillResponse(SkillBase):
 
 class GapAnalysisRequest(BaseModel):
     cv_id: int
-    user_target_job_id: int         
+    target_job_id: Optional[int] = None
     offer_id: Optional[int] = None
 
 
