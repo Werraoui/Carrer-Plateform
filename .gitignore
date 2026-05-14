@@ -32,3 +32,16 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# ─── M3 Roadmap (Wiame) ───────────────────────────────────────
+# ChromaDB vector store (lourd, se régénère automatiquement)
+backend/chroma_db/
+
+# CSV scrapés (se régénèrent avec job_scraper.py)
+data/scraper/scraped_data/*.csv
+
+# Fichier de test généré
+backend/test_rag_pipeline_output.json
+
+# Uploads CV
+backend/uploads/
