@@ -4,6 +4,8 @@ from typing import List
 
 
 class Settings(BaseSettings):
+    DEBUG: bool = False
+
     # Database
     DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/career_guidance"
 
