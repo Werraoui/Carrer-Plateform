@@ -6,14 +6,14 @@ from typing import Optional, List
 from datetime import datetime
 
 from app.db.database import get_db
-from db import models as db_models
+from app.db import models as db_models          # ✅ CORRIGÉ (était: from db import models)
 from app.routers.auth import get_current_user
 
 log    = logging.getLogger("router.roadmap")
 router = APIRouter()
 
 
-# Schemas 
+# ── Schemas ────────────────────────────────────────────────────────────────────
 
 class RoadmapGenerateRequest(BaseModel):
     career_gap_id:  int
@@ -53,10 +53,10 @@ class RoadmapOut(BaseModel):
 
 class ProgressUpdate(BaseModel):
     step_id: int
-    status:  str   # "completed", "in_progress", "not_started"
+    status:  str   # "completed" | "in_progress" | "not_started"
 
 
-#  POST /roadmap/generate 
+# ── POST /roadmap/generate ─────────────────────────────────────────────────────
 
 @router.post("/generate", response_model=RoadmapOut, status_code=status.HTTP_201_CREATED)
 async def generate_roadmap(
@@ -64,7 +64,6 @@ async def generate_roadmap(
     current_user: db_models.User = Depends(get_current_user),
     db:           Session        = Depends(get_db),
 ):
-
     # 1. Vérifier l'analyse de gap
     analysis = db.query(db_models.CareerGapAnalysis).filter(
         db_models.CareerGapAnalysis.id == request.career_gap_id
@@ -186,7 +185,7 @@ async def generate_roadmap(
     )
 
 
-# GET /roadmap/{roadmap_id} 
+# ── GET /roadmap/{roadmap_id} ──────────────────────────────────────────────────
 
 @router.get("/{roadmap_id}", response_model=RoadmapOut)
 def get_roadmap(
@@ -194,7 +193,6 @@ def get_roadmap(
     current_user: db_models.User = Depends(get_current_user),
     db:           Session        = Depends(get_db),
 ):
-    """Récupère une roadmap existante par son ID."""
     roadmap = db.query(db_models.Roadmap).filter(
         db_models.Roadmap.id == roadmap_id
     ).first()
@@ -250,14 +248,13 @@ def get_roadmap(
     )
 
 
-# GET /roadmap/ 
+# ── GET /roadmap/ ──────────────────────────────────────────────────────────────
 
 @router.get("/", response_model=List[RoadmapOut])
 def list_roadmaps(
     current_user: db_models.User = Depends(get_current_user),
     db:           Session        = Depends(get_db),
 ):
-    """Liste toutes les roadmaps de l'utilisateur connecté."""
     utj_ids = [
         r.id for r in db.query(db_models.UserTargetJob.id).filter(
             db_models.UserTargetJob.user_id == current_user.id
@@ -293,7 +290,7 @@ def list_roadmaps(
     return results
 
 
-# PATCH /roadmap/progress 
+# ── PATCH /roadmap/progress ────────────────────────────────────────────────────
 
 @router.patch("/progress", status_code=status.HTTP_200_OK)
 def update_step_progress(
@@ -301,7 +298,6 @@ def update_step_progress(
     current_user: db_models.User = Depends(get_current_user),
     db:           Session        = Depends(get_db),
 ):
-    """Met à jour la progression d'un step """
     step = db.query(db_models.RoadmapStep).filter(
         db_models.RoadmapStep.id == update.step_id
     ).first()
@@ -336,14 +332,14 @@ def update_step_progress(
     return {"step_id": update.step_id, "status": update.status, "message": "Progression mise à jour"}
 
 
-# GET /roadmap/{roadmap_id}/progress
+# ── GET /roadmap/{roadmap_id}/progress ────────────────────────────────────────
+
 @router.get("/{roadmap_id}/progress")
 def get_roadmap_progress(
     roadmap_id:   int,
     current_user: db_models.User = Depends(get_current_user),
     db:           Session        = Depends(get_db),
 ):
-    """Retourne la progression et le pourcentage de complétion d'une roadmap."""
     roadmap = db.query(db_models.Roadmap).filter(
         db_models.Roadmap.id == roadmap_id
     ).first()
