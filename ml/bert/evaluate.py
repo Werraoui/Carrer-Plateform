@@ -82,7 +82,7 @@ def analyse_errors(true_seqs, pred_seqs, prepared_examples):
             elif lbl == "O" and current_type:
                 spans.append((start, i - 1, current_type))
                 current_type = None
-                start = None
+                start = None        
         if current_type:
             spans.append((start, len(seq) - 1, current_type))
         return set(spans)
