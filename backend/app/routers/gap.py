@@ -185,14 +185,16 @@ async def analyze_gap(
                        "Appelez d'abord POST /gap/target-job.",
             )
 
-    # 3. Vérifier l'offre si fournie
+    # 3. Vérifier l'offre si fournie. Traiter 0 comme "aucune offre".
     offer_id = request.offer_id
-    if offer_id:
+    if offer_id is not None and offer_id != 0:
         offer = db.query(db_models.Offer).filter(
             db_models.Offer.id == offer_id
         ).first()
         if not offer:
             raise HTTPException(status_code=404, detail="Offre introuvable")
+    else:
+        offer_id = None
 
     log.info(
         f"Gap analysis — user={current_user.id} | cv={cv.id} | "
