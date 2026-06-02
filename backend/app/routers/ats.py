@@ -37,7 +37,7 @@ async def optimize_cv(
         ).first()
         if not offer:
             raise HTTPException(status_code=404, detail="Offre introuvable")
-        offer_text = offer.description
+        offer_text = offer.description or offer.raw_text
 
     # Run full ATS analysis
     ats_result = await analyze_cv_for_ats(

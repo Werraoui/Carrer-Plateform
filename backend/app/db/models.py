@@ -36,6 +36,7 @@ class User(Base):
     user_skill_progress = relationship(
         "UserSkillProgress", back_populates="user", cascade="all, delete-orphan"
     )
+    offers = relationship("Offer", back_populates="user")
 
 
 class TargetJob(Base):
@@ -153,9 +154,11 @@ class Offer(Base):
     source_type = Column(String(20), nullable=False, server_default="scraped")
     raw_text = Column(Text)
     target_job_id = Column(Integer, ForeignKey("target_jobs.id", ondelete="SET NULL"), index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
     url = Column(Text, unique=True)
     scraped_at = Column(DateTime, server_default=func.now(), nullable=False)
 
+    user = relationship("User", back_populates="offers")
     target_job = relationship("TargetJob", back_populates="offers")
     offer_skills = relationship("OfferSkill", back_populates="offer", cascade="all, delete-orphan")
 

@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import auth, cv, gap, offers, roadmap, interview, ats
+from app.routers import auth, cv, gap, offers as offers_router, roadmap, interview, ats
 from app.db.database import engine
 from app.db import models as db_models
 
@@ -28,7 +28,7 @@ app.add_middleware(
 app.include_router(auth.router,      prefix="/auth",      tags=["Authentication"])
 app.include_router(cv.router,        prefix="/cv",         tags=["CV"])
 app.include_router(gap.router,       prefix="/gap",        tags=["Career Gap"])
-app.include_router(offers.router,    prefix="/offers",     tags=["Offers"])
+app.include_router(offers_router.router, prefix="/offers", tags=["Offers"])
 app.include_router(roadmap.router,   prefix="/roadmap",    tags=["Roadmap"])
 app.include_router(interview.router, prefix="/interview",  tags=["Interview"])
 app.include_router(ats.router,       prefix="/ats",        tags=["ATS Optimization"])
