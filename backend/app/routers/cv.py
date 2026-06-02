@@ -45,7 +45,10 @@ async def _extract_skills_via_ml(text: str) -> list[str]:
             )
             resp.raise_for_status()
             data = resp.json()
-            return data.get("skills", [])
+            skills = data.get("skills", [])
+            source = data.get("source", "unknown")
+            log.info(f"ML extraction ({source}): {len(skills)} skills")
+            return skills
     except Exception as e:
         log.warning(f"ML service indisponible pour extraction skills : {e}")
         return []

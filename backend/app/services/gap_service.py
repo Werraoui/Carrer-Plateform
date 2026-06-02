@@ -1,9 +1,12 @@
+import logging
 import httpx
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from typing import Optional
 
 from app.db import models as db_models
+
+log = logging.getLogger("gap_service")
 from app.models.skill import GapResult, GapSkillDetail
 from app.config import settings
 
@@ -14,6 +17,29 @@ async def _get_cv_skills(cv: db_models.CV, db: Session) -> list[str]:
         db_models.Skill, db_models.CVSkill.skill_id == db_models.Skill.id
     ).filter(db_models.CVSkill.cv_id == cv.id).all()
     return [skill.name for _, skill in cv_skills]
+
+
+def _persist_cv_skills(db: Session, cv: db_models.CV, skill_names: list[str]) -> None:
+    """Enregistre les skills extraits par le ML sur le CV."""
+    for name in skill_names:
+        name_clean = name.lower().strip()
+        if not name_clean:
+            continue
+
+        skill = db.query(db_models.Skill).filter(
+            db_models.Skill.name == name_clean
+        ).first()
+        if not skill:
+            skill = db_models.Skill(name=name_clean)
+            db.add(skill)
+            db.flush()
+
+        exists = db.query(db_models.CVSkill).filter(
+            db_models.CVSkill.cv_id == cv.id,
+            db_models.CVSkill.skill_id == skill.id,
+        ).first()
+        if not exists:
+            db.add(db_models.CVSkill(cv_id=cv.id, skill_id=skill.id))
 
 
 async def _get_market_skills(target_job_id: int, db: Session) -> list[dict]:
@@ -51,14 +77,26 @@ async def _get_offer_skills(offer_id: int, db: Session) -> list[dict]:
     ]
 
 
-def _local_fallback(cv_skills: list[str], market_skills: list[dict]) -> dict:
+def _local_fallback(
+    cv_skills: list[str],
+    market_skills: list[dict],
+    cv_text: str = "",
+) -> dict:
     """
     Calcul local quand le ML service est indisponible.
-    Reproduit exactement la logique de gap_calculator.py + scorer.py de M1.
+    Scanne aussi le texte du CV pour les noms de skills du marché.
     """
+    import re
+
     market_names = [s["name"] for s in market_skills]
 
-    cv_set = set(cv_skills)
+    cv_set = set(s.lower().strip() for s in cv_skills if s)
+    if cv_text:
+        text_lower = cv_text.lower()
+        for name in market_names:
+            if re.search(r"\b" + re.escape(name) + r"\b", text_lower):
+                cv_set.add(name)
+
     market_set = set(market_names)
 
     acquired = list(cv_set & market_set)
@@ -121,31 +159,46 @@ async def compute_and_save_gap(
         )
 
     market_names = [s["name"] for s in market_skills]
+    job_weights = {s["name"]: s["importance"] for s in market_skills}
 
-    # ── 3. Appel ML service (POST /calculate-gap) ─────────────────────────────
-    # M1 ml_server.py expects: { "cv_text": str, "market_text": str }
-    # and returns:
-    # {
-    #   "cv_skills": [...],
-    #   "market_skills": [...],
-    #   "gap": { "acquired": [...], "missing": [...], "match_percentage": float },
-    #   "score": float
-    # }
+    cv_text = (cv.extracted_text or "").strip()
+    if not cv_text and cv_skills:
+        cv_text = " ".join(cv_skills)
+    if not cv_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le CV n'a pas de texte extrait. Réuploadez le CV.",
+        )
+
+    # ── 3. Appel ML service — CV parser (model-best) sur le texte complet du CV ─
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
                 f"{settings.ML_SERVICE_URL}/calculate-gap",
                 json={
-                    "cv_text":     " ".join(cv_skills),
-                    "market_text": " ".join(market_names),
+                    "cv_text": cv_text,
+                    "market_skills": market_names,
+                    "job_weights": job_weights,
                 },
             )
             response.raise_for_status()
             gap_data = response.json()
 
-    except (httpx.RequestError, httpx.HTTPStatusError):
-        # ML service indisponible → calcul local avec la même logique
-        gap_data = _local_fallback(cv_skills, market_skills)
+        ml_cv_skills = gap_data.get("cv_skills") or []
+        extraction_source = gap_data.get("extraction_source", "?")
+        log.info(
+            "Gap ML — source=%s | cv_skills=%s | acquired=%s",
+            extraction_source,
+            ml_cv_skills,
+            gap_data.get("gap", {}).get("acquired"),
+        )
+        if ml_cv_skills:
+            _persist_cv_skills(db, cv, ml_cv_skills)
+            cv_skills = ml_cv_skills
+
+    except (httpx.RequestError, httpx.HTTPStatusError) as e:
+        log.warning("ML service indisponible pour gap : %s", e)
+        gap_data = _local_fallback(cv_skills, market_skills, cv_text=cv_text)
 
     acquired = gap_data["gap"]["acquired"]
     missing  = gap_data["gap"]["missing"]
