@@ -5,10 +5,11 @@ from fastapi import HTTPException, status
 from typing import Optional
 
 from app.db import models as db_models
-
-log = logging.getLogger("gap_service")
 from app.models.skill import GapResult, GapSkillDetail
 from app.config import settings
+from app.services.offer_service import ensure_offer_skills
+
+log = logging.getLogger("gap_service")
 
 
 async def _get_cv_skills(cv: db_models.CV, db: Session) -> list[str]:
@@ -43,10 +44,7 @@ def _persist_cv_skills(db: Session, cv: db_models.CV, skill_names: list[str]) ->
 
 
 async def _get_market_skills(target_job_id: int, db: Session) -> list[dict]:
-    """
-    Retourne les skills du marché pour un poste cible
-    (agrégat des job_skills + offer_skills).
-    """
+    """Skills de référence marché pour un poste cible (table job_skills, seed)."""
     job_skills = db.query(db_models.JobSkill, db_models.Skill).join(
         db_models.Skill, db_models.JobSkill.skill_id == db_models.Skill.id
     ).filter(db_models.JobSkill.target_job_id == target_job_id).all()
@@ -148,14 +146,17 @@ async def compute_and_save_gap(
 
     # ── 2. Skills cibles ──────────────────────────────────────────────────────
     if offer_id:
-        market_skills = await _get_offer_skills(offer_id, db)
+        market_skills = await ensure_offer_skills(db, offer_id)
     else:
         market_skills = await _get_market_skills(user_target_job.target_job_id, db)
 
     if not market_skills:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Aucun skill de référence trouvé pour ce poste. Lancez d'abord le scraping.",
+            detail=(
+                "Aucun skill de référence pour ce poste. "
+                "Pour une offre, vérifiez la description ; pour le marché général, lancez le seed."
+            ),
         )
 
     market_names = [s["name"] for s in market_skills]

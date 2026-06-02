@@ -133,8 +133,9 @@ async def analyze_gap(
     Calcule le career gap d'un CV.
 
     Deux scénarios :
-    - request.target_job_id → comparaison contre le marché général du métier
-    - request.offer_id      → comparaison contre une offre spécifique
+    - request.target_job_id → comparaison contre job_skills (marché seed)
+    - request.offer_id      → comparaison contre offer_skills de cette offre
+      (extraction ML à la première analyse si pas encore fait)
 
     Si les deux sont fournis, offer_id a la priorité.
     """
