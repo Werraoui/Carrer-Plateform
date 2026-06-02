@@ -11,17 +11,16 @@ from pydantic import BaseModel
 # ── Path setup ────────────────────────────────────────────────────────────────
 _API_DIR    = os.path.dirname(os.path.abspath(__file__))
 _ML_DIR     = os.path.dirname(_API_DIR)
-_BERT_DIR   = os.path.join(_ML_DIR, "bert")
 _ENGINE_DIR = os.path.join(_ML_DIR, "gap_engine")
 _CV_PARSER_DIR = os.path.join(_ML_DIR, "cv_parser")
+_BERT_DIR   = os.path.join(_ML_DIR, "bert")
 _BERT_MODEL_DIR = os.path.join(_BERT_DIR, "model")
 
-sys.path.insert(0, _ML_DIR)
-sys.path.insert(0, _BERT_DIR)
-sys.path.insert(0, _ENGINE_DIR)
-sys.path.insert(0, _CV_PARSER_DIR)
+for p in [_ML_DIR, _ENGINE_DIR, _CV_PARSER_DIR, _BERT_DIR]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
-from gap_engine.skill_matcher import compute_gap_aligned, extract_skills_from_text_taxonomy
+from skill_matcher import compute_gap_aligned, extract_skills_from_text_taxonomy
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
@@ -175,13 +174,17 @@ class GapInput(BaseModel):
 
 @app.get("/health")
 def health():
-    from extract import resolve_model_dir
+    try:
+        from extract import resolve_model_dir
+        model_dir = resolve_model_dir() if _cv_parser_ready else None
+    except Exception:
+        model_dir = None
 
     return {
         "status": "ok",
         "extraction": _active_extractor,
         "cv_parser_loaded": _cv_parser_ready,
-        "cv_parser_model_dir": resolve_model_dir() if _cv_parser_ready else None,
+        "cv_parser_model_dir": model_dir,
         "bert_loaded": _bert_extractor is not None,
         "bert_model_dir": _BERT_MODEL_DIR,
     }
