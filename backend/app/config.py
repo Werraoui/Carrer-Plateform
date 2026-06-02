@@ -1,8 +1,11 @@
 from pydantic_settings import BaseSettings
+
 from typing import List
 
 
 class Settings(BaseSettings):
+    DEBUG: bool = False
+
     # Database
     DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/career_guidance"
 
@@ -29,6 +32,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+
 
 
 settings = Settings()
