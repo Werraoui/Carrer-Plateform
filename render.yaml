@@ -11,7 +11,7 @@ services:
     name: career-ml
     runtime: python
     region: frankfurt
-    plan: standard
+    plan: free
     rootDir: ml
     buildCommand: pip install -r requirements.txt
     startCommand: cd api && uvicorn ml_server:app --host 0.0.0.0 --port $PORT
@@ -27,7 +27,7 @@ services:
     name: career-api
     runtime: python
     region: frankfurt
-    plan: standard
+    plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
