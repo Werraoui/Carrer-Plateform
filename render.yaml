@@ -1,0 +1,73 @@
+# Render Blueprint — Career Platform
+# https://render.com/docs/blueprint-spec
+#
+# Deploy: connect repo → New Blueprint → apply this file.
+# Set secrets in Render Dashboard after first deploy:
+#   DATABASE_URL, SECRET_KEY, LLM_API_KEY, ALLOWED_ORIGINS
+
+services:
+  # ── ML micro-service (skill extraction + gap) ─────────────────────────────
+  - type: web
+    name: career-ml
+    runtime: python
+    region: frankfurt
+    plan: standard
+    rootDir: ml
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd api && uvicorn ml_server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+
+  # ── Backend API (FastAPI) ───────────────────────────────────────────────────
+  - type: web
+    name: career-api
+    runtime: python
+    region: frankfurt
+    plan: standard
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    # Optional: run migrations against Supabase on each deploy
+    # releaseCommand: alembic upgrade head
+    disk:
+      name: career-api-data
+      mountPath: /opt/render/project/src/chroma_db
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: DEBUG
+        value: "false"
+      # Supabase / Postgres (set in Dashboard — do not commit)
+      - key: DATABASE_URL
+        sync: false
+      # JWT — generate: openssl rand -hex 32
+      - key: SECRET_KEY
+        generateValue: true
+      # Google Gemini (Interview + Roadmap)
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: gemini-2.5-flash-lite
+      - key: LLM_FALLBACK_MODELS
+        value: gemini-2.5-flash-lite,gemini-2.0-flash,gemini-2.5-flash
+      - key: LLM_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta
+      # ML service URL (auto from career-ml deploy)
+      - key: ML_SERVICE_URL
+        fromService:
+          name: career-ml
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      # Frontend CORS — comma-separated origins, e.g. https://myapp.vercel.app
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: UPLOAD_DIR
+        value: uploads
