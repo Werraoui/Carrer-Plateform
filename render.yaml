@@ -1,19 +1,24 @@
-# Render Blueprint — Career Platform
-# https://render.com/docs/blueprint-spec
+# Render Blueprint — FREE tier (Hobby workspace, no credit card)
+# https://render.com/docs/free
 #
-# Deploy: connect repo → New Blueprint → apply this file.
-# Set secrets in Render Dashboard after first deploy:
-#   DATABASE_URL, SECRET_KEY, LLM_API_KEY, ALLOWED_ORIGINS
+# Limits: 750 instance-hours/month per workspace, 512 MB RAM, spin-down after 15 min idle,
+# no persistent disks, cold start ~30–60 s. Fine for demos / PFE tests.
+#
+# Also free elsewhere (you already use):
+#   - Supabase Postgres (free tier) → DATABASE_URL
+#   - Google Gemini API (free quota) → LLM_API_KEY
+#
+# After deploy, set in Dashboard: DATABASE_URL, LLM_API_KEY, ALLOWED_ORIGINS
 
 services:
-  # ── ML micro-service (skill extraction + gap) ─────────────────────────────
+  # ── ML (spaCy only — no PyTorch on free RAM) ───────────────────────────────
   - type: web
     name: career-ml
     runtime: python
-    region: frankfurt
     plan: free
+    region: frankfurt
     rootDir: ml
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements-render-free.txt
     startCommand: cd api && uvicorn ml_server:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
@@ -22,22 +27,16 @@ services:
       - key: PYTHONUNBUFFERED
         value: "1"
 
-  # ── Backend API (FastAPI) ───────────────────────────────────────────────────
+  # ── Backend API ─────────────────────────────────────────────────────────────
   - type: web
     name: career-api
     runtime: python
-    region: frankfurt
     plan: free
+    region: frankfurt
     rootDir: backend
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements-render-free.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
-    # Optional: run migrations against Supabase on each deploy
-    # releaseCommand: alembic upgrade head
-    disk:
-      name: career-api-data
-      mountPath: /opt/render/project/src/chroma_db
-      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.9"
@@ -45,13 +44,13 @@ services:
         value: "1"
       - key: DEBUG
         value: "false"
-      # Supabase / Postgres (set in Dashboard — do not commit)
+      # Skip ChromaDB + sentence-transformers (too heavy for 512 MB)
+      - key: SKIP_CHROMA_INIT
+        value: "true"
       - key: DATABASE_URL
         sync: false
-      # JWT — generate: openssl rand -hex 32
       - key: SECRET_KEY
         generateValue: true
-      # Google Gemini (Interview + Roadmap)
       - key: LLM_API_KEY
         sync: false
       - key: LLM_MODEL
@@ -60,13 +59,11 @@ services:
         value: gemini-2.5-flash-lite,gemini-2.0-flash,gemini-2.5-flash
       - key: LLM_BASE_URL
         value: https://generativelanguage.googleapis.com/v1beta
-      # ML service URL (auto from career-ml deploy)
       - key: ML_SERVICE_URL
         fromService:
           name: career-ml
           type: web
           envVarKey: RENDER_EXTERNAL_URL
-      # Frontend CORS — comma-separated origins, e.g. https://myapp.vercel.app
       - key: ALLOWED_ORIGINS
         sync: false
       - key: UPLOAD_DIR

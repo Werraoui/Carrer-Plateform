@@ -55,17 +55,21 @@ async def startup_event():
         log.error("Database seed failed: %s", e)
         raise
 
-    try:
-        from app.services.roadmap.rag.vector_store import initialize_vector_store
-        stats = initialize_vector_store()
-        log.info(
-            f"ChromaDB prêt : {stats.get('total_documents', 0)} documents "
-            f"(KB: {stats.get('knowledge_base_docs', 0)}, "
-            f"Scraper: {stats.get('scraper_docs', 0)})"
-        )
-    except Exception as e:
-        log.warning(f"ChromaDB init échoué (non bloquant) : {e}")
-        log.warning("Le pipeline RAG utilisera le fallback rule-based")
+    skip_chroma = os.getenv("SKIP_CHROMA_INIT", "").lower() in ("1", "true", "yes")
+    if skip_chroma:
+        log.info("SKIP_CHROMA_INIT=true — ChromaDB désactivé (mode Render free / léger)")
+    else:
+        try:
+            from app.services.roadmap.rag.vector_store import initialize_vector_store
+            stats = initialize_vector_store()
+            log.info(
+                f"ChromaDB prêt : {stats.get('total_documents', 0)} documents "
+                f"(KB: {stats.get('knowledge_base_docs', 0)}, "
+                f"Scraper: {stats.get('scraper_docs', 0)})"
+            )
+        except Exception as e:
+            log.warning(f"ChromaDB init échoué (non bloquant) : {e}")
+            log.warning("Le pipeline RAG utilisera le fallback rule-based")
 
 
 @app.get("/", tags=["Health"])
