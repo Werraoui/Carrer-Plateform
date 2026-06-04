@@ -89,8 +89,12 @@ class CV(Base):
 
     user = relationship("User", back_populates="cvs")
     cv_skills = relationship("CVSkill", back_populates="cv", cascade="all, delete-orphan")
-    career_gap_analyses = relationship("CareerGapAnalysis", back_populates="cv")
-    cv_optimizations = relationship("CVOptimization", back_populates="cv")
+    career_gap_analyses = relationship(
+        "CareerGapAnalysis", back_populates="cv", cascade="all, delete-orphan"
+    )
+    cv_optimizations = relationship(
+        "CVOptimization", back_populates="cv", cascade="all, delete-orphan"
+    )
 
 
 class Skill(Base):

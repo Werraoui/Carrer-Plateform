@@ -3,6 +3,7 @@ import logging
 import httpx
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -10,6 +11,7 @@ from app.db import models as db_models
 from app.models.cv import CVResponse, CVUploadResponse
 from app.routers.auth import get_current_user
 from app.config import settings
+from app.services.cv_service import delete_cv_and_dependencies
 
 log    = logging.getLogger("router.cv")
 router = APIRouter()
@@ -195,7 +197,7 @@ def delete_cv(
     current_user: db_models.User = Depends(get_current_user),
     db:           Session        = Depends(get_db),
 ):
-    """Supprime un CV (fichier disque + enregistrement BDD)."""
+    """Supprime un CV (fichier disque + gap analyses + roadmaps + BDD)."""
     cv = db.query(db_models.CV).filter(
         db_models.CV.id      == cv_id,
         db_models.CV.user_id == current_user.id,
@@ -203,15 +205,28 @@ def delete_cv(
     if not cv:
         raise HTTPException(status_code=404, detail="CV introuvable")
 
-    # Supprimer le fichier sur disque
+    file_path = cv.file_path
     try:
-        if os.path.exists(cv.file_path):
-            os.remove(cv.file_path)
-            log.info(f"Fichier supprimé : {cv.file_path}")
-    except Exception as e:
-        log.warning(f"Impossible de supprimer le fichier {cv.file_path} : {e}")
+        stats = delete_cv_and_dependencies(db, cv)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        log.error("Suppression CV %s — contrainte FK : %s", cv_id, e)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Impossible de supprimer ce CV : des données liées bloquent encore la suppression.",
+        ) from e
 
-    db.delete(cv)
-    db.commit()
+    try:
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+            log.info("Fichier supprimé : %s", file_path)
+    except OSError as e:
+        log.warning("Fichier déjà absent ou non supprimable %s : %s", file_path, e)
 
-    return {"message": "CV supprimé avec succès", "cv_id": cv_id}
+    log.info("CV %s supprimé — %s", cv_id, stats)
+    return {
+        "message": "CV supprimé avec succès",
+        "cv_id": cv_id,
+        "deleted": stats,
+    }
