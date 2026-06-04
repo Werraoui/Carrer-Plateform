@@ -1,0 +1,70 @@
+# Render Blueprint — FREE tier (Hobby workspace, no credit card)
+# https://render.com/docs/free
+#
+# Limits: 750 instance-hours/month per workspace, 512 MB RAM, spin-down after 15 min idle,
+# no persistent disks, cold start ~30–60 s. Fine for demos / PFE tests.
+#
+# Also free elsewhere (you already use):
+#   - Supabase Postgres (free tier) → DATABASE_URL
+#   - Google Gemini API (free quota) → LLM_API_KEY
+#
+# After deploy, set in Dashboard: DATABASE_URL, LLM_API_KEY, ALLOWED_ORIGINS
+
+services:
+  # ── ML (spaCy only — no PyTorch on free RAM) ───────────────────────────────
+  - type: web
+    name: career-ml
+    runtime: python
+    plan: free
+    region: frankfurt
+    rootDir: ml
+    buildCommand: pip install -r requirements-render-free.txt
+    startCommand: cd api && uvicorn ml_server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+
+  # ── Backend API ─────────────────────────────────────────────────────────────
+  - type: web
+    name: career-api
+    runtime: python
+    plan: free
+    region: frankfurt
+    rootDir: backend
+    buildCommand: pip install -r requirements-render-free.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: DEBUG
+        value: "false"
+      # Skip ChromaDB + sentence-transformers (too heavy for 512 MB)
+      - key: SKIP_CHROMA_INIT
+        value: "true"
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: gemini-2.5-flash-lite
+      - key: LLM_FALLBACK_MODELS
+        value: gemini-2.5-flash-lite,gemini-2.0-flash,gemini-2.5-flash
+      - key: LLM_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta
+      - key: ML_SERVICE_URL
+        fromService:
+          name: career-ml
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: UPLOAD_DIR
+        value: uploads
