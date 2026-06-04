@@ -21,7 +21,13 @@ class Settings(BaseSettings):
     LLM_FALLBACK_MODELS: str = "gemini-2.5-flash-lite,gemini-2.0-flash,gemini-2.5-flash"
     LLM_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta"
 
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
+    # CORS
+    ALLOWED_ORIGINS: List[str] = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+]
 
     UPLOAD_DIR: str = "uploads"
     MAX_FILE_SIZE_MB: int = 10
