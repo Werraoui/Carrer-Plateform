@@ -40,7 +40,7 @@ async def _extract_skills_via_ml(text: str) -> list[str]:
     if not text.strip():
         return []
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
                 f"{settings.ML_SERVICE_URL}/extract-skills",
                 json={"text": text},
@@ -149,9 +149,22 @@ async def upload_cv(
     else:
         log.info(f"CV {cv.id} → ML service indisponible, 0 skills extraits")
 
+    if skill_names:
+        message = "CV uploadé avec succès"
+    elif not extracted_text.strip():
+        message = (
+            "CV uploadé, mais aucun texte n'a pu être extrait "
+            "(PDF scanné ou image). Essayez un DOCX ou un PDF avec texte sélectionnable."
+        )
+    else:
+        message = (
+            "CV uploadé, mais l'extraction des compétences a échoué "
+            "(service ML en démarrage ou indisponible). Réessayez dans 30 s."
+        )
+
     return CVUploadResponse(
         cv_id       = cv.id,
-        message     = "CV uploadé avec succès",
+        message     = message,
         skills      = skill_names,
         skill_count = len(skill_names),
     )

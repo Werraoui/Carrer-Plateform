@@ -20,6 +20,7 @@ function UploadCV() {
   const [fileName, setFileName] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
   const [cvId, setCvId] = useState<number | null>(null);
+  const [uploadMessage, setUploadMessage] = useState("");
 
   async function handleFile(file: File) {
     setFileName(file.name);
@@ -37,8 +38,13 @@ function UploadCV() {
       setProgress(100);
       setSkills(res.skills);
       setCvId(res.cv_id);
+      setUploadMessage(res.message);
       setStage("done");
-      toast.success(`CV uploadé ! ${res.skill_count} compétences extraites.`);
+      if (res.skill_count > 0) {
+        toast.success(`CV uploadé ! ${res.skill_count} compétences extraites.`);
+      } else {
+        toast.warning(res.message);
+      }
     } catch (err: any) {
       clearInterval(timer);
       setStage("idle");
@@ -124,7 +130,11 @@ function UploadCV() {
                     </Badge>
                   ))
                 ) : (
-                  <p className="text-sm text-muted-foreground">Aucune compétence détectée — essaie un autre format de CV.</p>
+                  <div className="space-y-2 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm text-muted-foreground">
+                    <p className="font-medium text-foreground">Aucune compétence détectée</p>
+                    <p>{uploadMessage}</p>
+                    <p>Sur Render (plan gratuit), le service ML peut mettre ~30 s à démarrer. Ré-uploadez le CV après ce délai.</p>
+                  </div>
                 )}
               </div>
               <Button className="mt-6 h-11" onClick={() => nav({ to: "/gap" })}>
