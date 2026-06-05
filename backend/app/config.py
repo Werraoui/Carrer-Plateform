@@ -1,7 +1,7 @@
+import json
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
-
-from typing import List
 
 
 class Settings(BaseSettings):
@@ -16,18 +16,18 @@ class Settings(BaseSettings):
     ML_SERVICE_URL: str = "http://localhost:8001"
 
     LLM_API_KEY: str = ""
-    # gemini-2.5-flash-lite : stable ; gemini-2.5-flash peut renvoyer 503 (surcharge)
     LLM_MODEL: str = "gemini-2.5-flash-lite"
     LLM_FALLBACK_MODELS: str = "gemini-2.5-flash-lite,gemini-2.0-flash,gemini-2.5-flash"
     LLM_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta"
 
-    # CORS
-    ALLOWED_ORIGINS: List[str] = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-]
+    # CORS — sur Render: une URL ou plusieurs séparées par des virgules
+    # Ex: https://carrer-plateform.onrender.com
+    ALLOWED_ORIGINS: str = (
+        "http://localhost:3000,"
+        "http://localhost:5173,"
+        "http://localhost:8080,"
+        "http://127.0.0.1:8080"
+    )
 
     UPLOAD_DIR: str = "uploads"
     MAX_FILE_SIZE_MB: int = 10
@@ -41,6 +41,22 @@ class Settings(BaseSettings):
         if "#" in s:
             s = s.split("#", 1)[0].strip()
         return s
+
+    @property
+    def cors_origins(self) -> list[str]:
+        raw = (self.ALLOWED_ORIGINS or "").strip()
+        if not raw:
+            return ["*"]
+        if raw == "*":
+            return ["*"]
+        if raw.startswith("["):
+            try:
+                parsed = json.loads(raw)
+                if isinstance(parsed, list):
+                    return [str(x).strip() for x in parsed if str(x).strip()]
+            except json.JSONDecodeError:
+                pass
+        return [part.strip() for part in raw.split(",") if part.strip()]
 
     @property
     def llm_model_candidates(self) -> list[str]:

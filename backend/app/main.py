@@ -17,10 +17,11 @@ app = FastAPI(
     version="1.0.0",
 )
 
+_origins = settings.cors_origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,    
+    allow_origins=_origins,
+    allow_credentials="*" not in _origins,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["*"],
@@ -47,6 +48,7 @@ async def startup_event():
         log.info("Database schema initialized")
     except Exception as e:
         log.error("Database schema initialization failed: %s", e)
+        log.error("Vérifiez DATABASE_URL (Supabase: sslmode=require, port 6543 pooler)")
         raise
 
     try:
@@ -54,8 +56,7 @@ async def startup_event():
         if seed_if_empty():
             log.info("Reference data seeded (target jobs, skills, job_skills)")
     except Exception as e:
-        log.error("Database seed failed: %s", e)
-        raise
+        log.warning("Database seed skipped (non bloquant): %s", e)
 
     skip_chroma = os.getenv("SKIP_CHROMA_INIT", "").lower() in ("1", "true", "yes")
     if skip_chroma:
