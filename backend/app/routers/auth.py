@@ -1,5 +1,8 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
@@ -10,6 +13,7 @@ from app.db import models as db_models
 from app.models.user import UserCreate, UserResponse, TokenResponse, TokenData
 from app.config import settings
 
+log = logging.getLogger("router.auth")
 router = APIRouter()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -75,9 +79,17 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         password_hash=hash_password(user_data.password),
         level=user_data.level,
     )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+    try:
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+    except SQLAlchemyError as e:
+        db.rollback()
+        log.error("Register DB error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Base de données indisponible. Réessayez dans quelques instants.",
+        ) from e
 
     token = create_access_token({"sub": str(new_user.id)})
     return TokenResponse(access_token=token, user=UserResponse.model_validate(new_user))

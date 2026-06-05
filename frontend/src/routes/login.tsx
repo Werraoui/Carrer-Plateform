@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { login, register } from "@/lib/api/auth";
+import { formatApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/login")({ component: AuthPage });
@@ -44,7 +45,7 @@ function AuthPage() {
       toast.success(`Bienvenue, ${res.user.name} !`);
       nav({ to: "/dashboard" });
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Email ou mot de passe incorrect.");
+      toast.error(formatApiError(err, "Email ou mot de passe incorrect."));
     } finally {
       setLoginLoading(false);
     }
@@ -59,7 +60,7 @@ function AuthPage() {
       toast.success("Compte créé ! Bienvenue 🎉");
       nav({ to: "/dashboard" });
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erreur lors de la création du compte.");
+      toast.error(formatApiError(err, "Erreur lors de la création du compte."));
     } finally {
       setRegLoading(false);
     }
