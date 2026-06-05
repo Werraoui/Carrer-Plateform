@@ -1,30 +1,60 @@
 import { api } from "./client";
 
-export interface InterviewQuestion {
+export interface McqQuestion {
+  question: string;
+  choices: string[];
+}
+
+export interface AnswerReviewItem {
+  question_number: number;
+  question_type: string;
   question_text: string;
-  related_skill?: string;
+  user_answer: string;
+  is_correct: boolean;
+  feedback: string;
+  improvement?: string | null;
 }
 
-export interface InterviewSessionResponse {
-  session_id: number;
-  questions: InterviewQuestion[];
-  created_at: string;
+export interface InterviewFinalReport {
+  score_percent: number;
+  score_label: string;
+  overall_advice: string;
+  summary: string;
+  answers_review: AnswerReviewItem[];
 }
 
-export async function startInterview(
-  userTargetJobId: number,
-  numQuestions = 5,
-  offerId?: number
-): Promise<InterviewSessionResponse> {
-  const { data } = await api.post<InterviewSessionResponse>("/interview/start", {
-    user_target_job_id: userTargetJobId,
-    num_questions: numQuestions,
-    offer_id: offerId ?? null,
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  question_type?: string | null;
+  mcq?: McqQuestion | null;
+  open_question?: string | null;
+  final_report?: InterviewFinalReport | null;
+}
+
+export interface InterviewChatResponse {
+  session_id: string;
+  assistant_message: string;
+  question_type?: string | null;
+  mcq?: McqQuestion | null;
+  open_question?: string | null;
+  interview_complete: boolean;
+  final_report?: InterviewFinalReport | null;
+  history: ChatMessage[];
+}
+
+export async function sendInterviewMessage(
+  message: string,
+  sessionId?: string | null
+): Promise<InterviewChatResponse> {
+  const { data } = await api.post<InterviewChatResponse>("/interview/chat", {
+    session_id: sessionId ?? null,
+    message,
   });
   return data;
 }
 
-export async function listInterviewSessions(): Promise<InterviewSessionResponse[]> {
-  const { data } = await api.get<InterviewSessionResponse[]>("/interview/sessions");
+export async function getInterviewSession(sessionId: string): Promise<InterviewChatResponse> {
+  const { data } = await api.get<InterviewChatResponse>(`/interview/chat/${sessionId}`);
   return data;
 }

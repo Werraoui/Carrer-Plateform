@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { UploadCloud, FileText, CheckCircle2, Sparkles } from "lucide-react";
 import { uploadCV } from "@/lib/api/cv";
+import { formatApiError } from "@/lib/api/client";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/upload")({ component: UploadCV });
@@ -41,7 +42,7 @@ function UploadCV() {
     } catch (err: any) {
       clearInterval(timer);
       setStage("idle");
-      toast.error(err?.response?.data?.detail ?? "Erreur lors de l'upload.");
+      toast.error(formatApiError(err, "Erreur lors de l'upload."));
     }
   }
 

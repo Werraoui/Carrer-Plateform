@@ -11,6 +11,7 @@ import { CheckCircle2, X, AlertTriangle, Lightbulb, Loader2, FileEdit } from "lu
 import { toast } from "sonner";
 import { listCVs, type CVResponse } from "@/lib/api/cv";
 import { optimizeCV, type ATSResult } from "@/lib/api/ats";
+import { formatApiError } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_app/cv-optimization")({ component: CVOptimization });
 
@@ -43,7 +44,7 @@ function CVOptimization() {
       setResult(res);
       toast.success(`Score ATS : ${res.ats_score}/100`);
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erreur lors de l'analyse ATS.");
+      toast.error(formatApiError(err, "Erreur lors de l'analyse ATS."));
     } finally {
       setLoading(false);
     }

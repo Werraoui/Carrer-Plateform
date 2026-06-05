@@ -12,6 +12,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { toast } from "sonner";
 import { listCVs, type CVResponse } from "@/lib/api/cv";
 import { analyzeGap, getAvailableJobs, setTargetJob, type TargetJobOut, type GapResult } from "@/lib/api/gap";
+import { submitOffer } from "@/lib/api/offers";
+import { formatApiError } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_app/gap")({ component: Gap });
 
@@ -51,20 +53,38 @@ function Gap() {
 
   async function handleAnalyze() {
     if (!selectedCv) return toast.error("Sélectionne un CV.");
-    if (!selectedJob && mode === "market") return toast.error("Sélectionne un métier cible.");
+    if (mode === "market" && !selectedJob) return toast.error("Sélectionne un métier cible.");
+    if (mode === "offer" && offerText.trim().length < 50) {
+      return toast.error("Colle une offre d'au moins 50 caractères.");
+    }
     setLoading(true);
     try {
       const job = jobs.find((j) => String(j.id) === selectedJob);
-      if (job) await setTargetJob(job.id);
+      let offerId: number | undefined;
+
+      if (mode === "offer") {
+        const submitted = await submitOffer({
+          title: "Offre analysée",
+          company: "Offre utilisateur",
+          raw_text: offerText.trim(),
+          target_job_id: job?.id,
+        });
+        offerId = submitted.offer_id;
+        if (job) await setTargetJob(job.id);
+        else if (submitted.target_job_id) await setTargetJob(submitted.target_job_id);
+      } else if (job) {
+        await setTargetJob(job.id);
+      }
+
       const res = await analyzeGap(
         Number(selectedCv),
-        mode === "market" ? (job?.id ?? undefined) : undefined,
-        undefined
+        mode === "market" ? job?.id : job?.id ?? undefined,
+        offerId
       );
       setResult(res);
       toast.success("Analyse terminée !");
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erreur lors de l'analyse.");
+    } catch (err) {
+      toast.error(formatApiError(err, "Erreur lors de l'analyse."));
     } finally {
       setLoading(false);
     }
@@ -120,13 +140,15 @@ function Gap() {
               </div>
             </div>
 
-            {/* Job selector (market mode) */}
-            {mode === "market" && (
+            {/* Job selector (market) or optional (offer) */}
+            {(mode === "market" || mode === "offer") && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Métier cible</label>
+                <label className="text-sm font-medium">
+                  {mode === "offer" ? "Métier cible (optionnel)" : "Métier cible"}
+                </label>
                 <Select value={selectedJob} onValueChange={setSelectedJob}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Choisir un métier..." />
+                    <SelectValue placeholder={mode === "offer" ? "Auto-détecté depuis l'offre…" : "Choisir un métier..."} />
                   </SelectTrigger>
                   <SelectContent>
                     {jobs.map((j) => (

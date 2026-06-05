@@ -10,6 +10,7 @@ import { CheckCircle2, Circle, BookOpen, Code, FolderGit2, Lightbulb, Loader2, M
 import { toast } from "sonner";
 import { generateRoadmap, listRoadmaps, updateStepProgress, type RoadmapOut, type RoadmapStep } from "@/lib/api/roadmap";
 import { getGapHistory, type GapResult } from "@/lib/api/gap";
+import { formatApiError } from "@/lib/api/client";
 
 export const Route = createFileRoute("/_app/roadmap")({ component: Roadmap });
 
@@ -100,7 +101,7 @@ function Roadmap() {
       setStepStatus({});
       toast.success("Roadmap générée !");
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? "Erreur lors de la génération.");
+      toast.error(formatApiError(err, "Erreur lors de la génération."));
     } finally {
       setGenerating(false);
     }
