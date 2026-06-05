@@ -68,3 +68,23 @@ services:
         sync: false
       - key: UPLOAD_DIR
         value: uploads
+
+  # ── Frontend (TanStack Start + Vite — Node, pas Static Site) ───────────────
+  - type: web
+    name: career-frontend
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22.12.0"
+      # IMPORTANT: Vite lit VITE_* au moment du BUILD
+      - key: VITE_API_URL
+        fromService:
+          name: career-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
