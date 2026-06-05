@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".output/public",
+  "framework": null,
+  "functions": {
+    "server/chunks/**": {
+      "runtime": "nodejs20.x"
+    }
+  }
+}
